@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 
 // Schema/Blueprint of DATA
 const userSchema = new mongoose.Schema({
+    imgLink: String,
     firstName: String,
     middleName: String,
     lastName: String,

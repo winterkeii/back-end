@@ -8,7 +8,7 @@ const { verify } = require("../auth.js");
 router.post("/register", userController.registerUser);
 
 
-router.post("/all", userController.getAllUsers)
+router.get("/all", userController.getAllUsers)
 
 // User Login
 router.post("/login", userController.loginUser);
@@ -17,7 +17,7 @@ router.post("/login", userController.loginUser);
 router.post("/check-email", userController.checkEmail);
 
 // Get user details
-router.post("/details", verify, userController.getProfile);
+router.get("/details", verify, userController.getProfile);
 
 // Get user details
 router.post("/enroll", verify, userController.enroll);
@@ -25,6 +25,8 @@ router.post("/enroll", verify, userController.enroll);
 router.put("/update", verify, userController.updateProfile);
 
 router.put("/update-user", verify, userController.updateUser);
+
+router.delete("/delete-user", verify, userController.deleteUser);
 
 
 

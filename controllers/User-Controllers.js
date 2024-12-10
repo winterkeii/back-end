@@ -5,6 +5,7 @@ const auth = require("../auth.js");
 
 module.exports.registerUser = (req, res) => {
     let newUser = new User({
+        imgLink: req.body.imgLink,
         firstName: req.body.firstName,
         middleName: req.body.middleName,
         lastName: req.body.lastName,
@@ -113,10 +114,10 @@ module.exports.getProfile = (req, res) => {
 
 module.exports.updateProfile = (req, res) => {
     const { id } = req.user;
-    const { firstName, middleName, lastName, email, contactNumber, password } = req.body;
+    const { imgLink, firstName, middleName, lastName, email, contactNumber, password } = req.body;
 
-    const updateData = { firstName, middleName, lastName, email, contactNumber };
-
+    const updateData = { imgLink, firstName, middleName, lastName, email, contactNumber };
+   
     if (password) {
         updateData.password = bcryptjs.hashSync(password, 10);
     }
@@ -127,6 +128,7 @@ module.exports.updateProfile = (req, res) => {
                 message: "The email is already in use. Please choose a different email.",
             });
         }
+       
     User.findByIdAndUpdate(id, updateData, { new: true, runValidators: true })
         .then((updatedUser) => {
             if (!updatedUser) {
@@ -158,47 +160,92 @@ module.exports.updateProfile = (req, res) => {
     })
 };
 
-module.exports.updateUser = (req, res) => {
-    const { id, updatedDetails } = req.user;
 
-    console.log("Target ID:", id); // Log the target user ID
-    console.log("Updated Details:", updatedDetails); // Log the updated details
+module.exports.updateUser = async (req, res) => {
+  const userId = req.body._id || req.user.id; 
+  const {idAdmin, password, ...updatedDetails } = req.body; 
 
-    if (!req.user.isAdmin) {
-        return res.status(403).send({
-            code: "NOT-AUTHORIZED",
-            message: "You are not authorized to perform this action.",
-        });
+  console.log("Updating user:", userId, updatedDetails);
+
+  if (!userId) {
+    return res.status(400).send({
+      code: "MISSING-ID",
+      message: "User ID is required to update the user.",
+    });
+  }
+
+  if (password) {
+    updatedDetails.password = bcryptjs.hashSync(password, 10);
+  }
+
+ 
+  const allowedUpdates = ["imgLink","firstName", "middleName", "lastName", "email", "contactNumber", "password", "isAdmin"];
+  const sanitizedUpdates = Object.keys(updatedDetails)
+    .filter((key) => allowedUpdates.includes(key))
+    .reduce((obj, key) => {
+      obj[key] = updatedDetails[key];
+      return obj;
+    }, {});
+
+  try {
+
+    const updatedUser = await User.findByIdAndUpdate(userId, sanitizedUpdates, { new: true, runValidators: true });
+
+    if (!updatedUser) {
+      return res.status(404).send({
+        code: "USER-NOT-FOUND",
+        message: "User not found.",
+      });
     }
 
-    User.findByIdAndUpdate(
-        id,
-        { ...updatedDetails },
-        { new: true, runValidators: true } // Return updated document and validate changes
-    )
-        .then((updatedUser) => {
-            if (!updatedUser) {
-                return res.status(404).send({
-                    code: "USER-NOT-FOUND",
-                    message: "No user found with the provided ID.",
-                });
-            }
-            console.log("Updated User:", updatedUser); // Log the updated user details
-            res.send({
-                code: "UPDATE-SUCCESS",
-                message: "Profile updated successfully.",
-                result: updatedUser, // Return the updated user details
-            });
-        })
-        .catch((error) => {
-            console.error("Update Error:", error); // Log the error
-            res.status(500).send({
-                code: "UPDATE-FAILED",
-                message: "An error occurred while updating the user.",
-                error,
-            });
-        });
+    res.send({
+      code: "USER-UPDATE-SUCCESS",
+      message: "User updated successfully.",
+      result: updatedUser,
+    });
+  } catch (error) {
+    console.error("Error updating user:", error);
+    res.status(500).send({
+      code: "UPDATE-FAILED",
+      message: "An error occurred while updating the user.",
+    });
+  }
 };
+
+module.exports.deleteUser = async (req, res) => {
+    // Debug log
+  const Id = req.body._id;
+  console.log("Request Body:", req.body._id);
+  if (!Id) {
+    return res.status(400).send({
+      code: "MISSING-ID",
+      message: "User ID is required.",
+    });
+  }
+
+  try {
+    const deletedUser = await User.findByIdAndDelete(Id);
+    if (!deletedUser) {
+      return res.status(404).send({
+        code: "USER-NOT-FOUND",
+        message: "User not found.",
+      });
+    }
+
+    res.status(200).send({
+      code: "USER-DELETED-SUCCESS",
+      message: "User successfully deleted.",
+      result: deletedUser,
+    });
+  } catch (error) {
+    console.error("Error deleting user:", error);
+    res.status(500).send({
+      code: "SERVER-ERROR",
+      message: "An error occurred while deleting the user.",
+    });
+  }
+};
+  
 
 
 
